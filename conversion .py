@@ -230,7 +230,7 @@ def matrix_from_quaternion(quaternion: torch.Tensor) -> torch.Tensor:
 # 欧拉角转旋转矩阵
 @dispatch
 def get_matrix_z(yaw: np.ndarray) -> np.ndarray:
-    """ roation matrix around z axis
+    """ roation matrix around z-axis
 
     Args:
         yaw (np.ndarray): (*,)
@@ -252,7 +252,7 @@ def get_matrix_z(yaw: np.ndarray) -> np.ndarray:
 
 @dispatch
 def get_matrix_y(pitch: np.ndarray) -> np.ndarray:
-    """ roation matrix around y axis
+    """ roation matrix around y-axis
 
     Args:
         pitch (np.ndarray): (*,)
@@ -274,7 +274,7 @@ def get_matrix_y(pitch: np.ndarray) -> np.ndarray:
 
 @dispatch
 def get_matrix_x(roll: np.ndarray) -> np.ndarray:
-    """ roation matrix around x axis
+    """ roation matrix around x-axis
 
     Args:
         roll (np.ndarray): (*,)
@@ -295,7 +295,7 @@ def get_matrix_x(roll: np.ndarray) -> np.ndarray:
 
 @dispatch
 def get_matrix_z(yaw: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around z axis
+    """ roation matrix around z-axis
 
     Args:
         yaw (torch.Tensor): (*,)
@@ -305,20 +305,20 @@ def get_matrix_z(yaw: torch.Tensor) -> torch.Tensor:
     device = yaw.device
     Rz = torch.stack(
         [
-            torch.stack([torch.cos(yaw), -torch.sin(yaw), torch.zeros_like(yaw).to(device)], axis=-1),
-            torch.stack([torch.sin(yaw), torch.cos(yaw), torch.zeros_like(yaw).to(device)], axis=-1),
+            torch.stack([torch.cos(yaw), -torch.sin(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
+            torch.stack([torch.sin(yaw), torch.cos(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
             torch.stack([torch.zeros_like(yaw).to(device),
                          torch.zeros_like(yaw).to(device),
-                         torch.ones_like(yaw).to(device)], axis=-1),
+                         torch.ones_like(yaw).to(device)], dim=-1),
         ],
-        axis=-2,
+        dim=-2,
     )
     return Rz
 
 
 @dispatch
 def get_matrix_y(pitch: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around y axis
+    """ roation matrix around y-axis
 
     Args:
         pitch (torch.Tensor): (*,)
@@ -328,21 +328,21 @@ def get_matrix_y(pitch: torch.Tensor) -> torch.Tensor:
     device = pitch.device
     Ry = torch.stack(
         [
-            torch.stack([torch.cos(pitch), torch.zeros_like(pitch).to(device), torch.sin(pitch)], axis=-1),
+            torch.stack([torch.cos(pitch), torch.zeros_like(pitch).to(device), torch.sin(pitch)], dim=-1),
             torch.stack([torch.zeros_like(pitch).to(device),
                          torch.ones_like(pitch).to(device),
-                         torch.zeros_like(pitch).to(device)], axis=-1),
+                         torch.zeros_like(pitch).to(device)], dim=-1),
             torch.stack(
-                [-torch.sin(pitch), torch.zeros_like(pitch).to(device), torch.cos(pitch)], axis=-1),
+                [-torch.sin(pitch), torch.zeros_like(pitch).to(device), torch.cos(pitch)], dim=-1),
         ],
-        axis=-2,
+        dim=-2,
     )
     return Ry
 
 
 @dispatch
 def get_matrix_x(roll: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around x axis
+    """ roation matrix around x-axis
 
     Args:
         roll (torch.Tensor): (*,)
@@ -354,11 +354,11 @@ def get_matrix_x(roll: torch.Tensor) -> torch.Tensor:
         [
             torch.stack([torch.ones_like(roll).to(device),
                          torch.zeros_like(roll).to(device),
-                         torch.zeros_like(roll).to(device)], axis=-1),
-            torch.stack([torch.zeros_like(roll).to(device), torch.cos(roll), -torch.sin(roll)], axis=-1),
-            torch.stack([torch.zeros_like(roll).to(device), torch.sin(roll), torch.cos(roll)], axis=-1),
+                         torch.zeros_like(roll).to(device)], dim=-1),
+            torch.stack([torch.zeros_like(roll).to(device), torch.cos(roll), -torch.sin(roll)], dim=-1),
+            torch.stack([torch.zeros_like(roll).to(device), torch.sin(roll), torch.cos(roll)], dim=-1),
         ],
-        axis=-2,
+        dim=-2,
     )
     return Rx
 
@@ -433,9 +433,7 @@ def matrix_from_axis_angle(axis_angle: torch.Tensor) -> torch.Tensor:
     angle_cos = torch.cos(angle)[..., None]
     angle_sin = torch.sin(angle)[..., None]
 
-    R = angle_cos * torch.eye(3).to(device) + angle_sin * axis_skew + (1 - angle_cos) * axis[..., None] @ axis[...,
-                                                                                                          None, :]
-
+    R = angle_cos * torch.eye(3).to(device) + angle_sin * axis_skew + (1 - angle_cos) * axis[..., None] @ axis[..., None, :]
     return R
 
 
@@ -526,7 +524,7 @@ def axis_angle_from_euler(euler_angle: Union[np.ndarray, torch.Tensor]) -> Union
     """欧拉角转轴角
 
     Args:
-        euler: (*,3)
+        euler_angle: (*,3)
 
     Returns: (*,3)
 
@@ -638,6 +636,7 @@ def axis_angle_from_euler_angle(euler_angle: Union[np.ndarray, torch.Tensor]) ->
 
     """
     return axis_angle_from_quaternion(quaternion_from_euler_angle(euler_angle))
+
 
 def euler_angle_from_axis_angle(axis_angle: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
     """轴角转欧拉角
