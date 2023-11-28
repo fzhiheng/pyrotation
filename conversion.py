@@ -651,43 +651,57 @@ def euler_angle_from_axis_angle(axis_angle: Union[np.ndarray, torch.Tensor]) -> 
 
 
 # other functions
-
 @dispatch
-def full_matrix_from_qt(q: np.ndarray, t: np.ndarray) -> np.ndarray:
+def fill_matrix(matrix: np.ndarray, t: np.ndarray) -> np.ndarray:
     """_summary_
 
     Args:
-        q (np.ndarray): (*,4) wxyz
+        matrix (np.ndarray): (*,3,3) matrix
         t (np.ndarray): (*,3)
 
     Returns:
-        np.ndarray: _description_
+        np.ndarray: (*,4,4)
     """
-    matrix = matrix_from_quaternion(q)  # (*,3,3)
-    full_matrix = np.concatenate([matrix, t[..., None]], axis=-1)  # (*,3,4)
-    padding = np.zeros_like(full_matrix[..., :1, :])  # (*,1,4)
+    full_matrix = np.concatenate([matrix, t[..., None]], axis=-1)
+    padding = np.zeros_like(full_matrix[..., :1, :])
     padding[..., 0, -1] = 1
     full_matrix = np.concatenate([full_matrix, padding], axis=-2)
     return full_matrix
 
 
 @dispatch
-def full_matrix_from_qt(q: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+def fill_matrix(matrix: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     """_summary_
 
     Args:
-        q (torch.Tensor): (*,4) wxyz
+        matrix (torch.Tensor): (*,3,3) matrix
         t (torch.Tensor): (*,3)
 
     Returns:
-        torch.Tensor: _description_
+        torch.Tensor: (*,4,4)
     """
-    matrix = matrix_from_quaternion(q)
     full_matrix = torch.cat([matrix, t[..., None]], dim=-1)
     padding = torch.zeros_like(full_matrix[..., :1, :])
     padding[..., 0, -1] = 1
     full_matrix = torch.cat([full_matrix, padding], dim=-2)
     return full_matrix
+
+
+
+def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    """_summary_
+
+    Args:
+        q (Union[np.ndarray, torch.Tensor]): (*,4) wxyz
+        t (Union[np.ndarray, torch.Tensor]): (*,3)
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,4,4)
+    """
+    matrix = matrix_from_quaternion(q)  # (*,3,3)
+    full_matrix = fill_matrix(matrix, t)
+    return full_matrix
+
 
 
 if __name__ == "__main__":
