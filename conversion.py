@@ -363,7 +363,7 @@ def get_matrix_x(roll: torch.Tensor) -> torch.Tensor:
     return Rx
 
 
-def matrix_from_euler_angle(euler_angle: Union[torch.Tensor, np.ndarray]) -> Union[torch.Tensor, np.ndarray]:
+def matrix_from_euler_angle(euler_angle: Union[torch.Tensor, np.ndarray], axes=("z", "y", "x")) -> Union[torch.Tensor, np.ndarray]:
     """ get rotation matrix from euler angle,default order is yaw, pitch, roll
 
     Args:
@@ -378,8 +378,9 @@ def matrix_from_euler_angle(euler_angle: Union[torch.Tensor, np.ndarray]) -> Uni
     R_z = get_matrix_z(yaw)
     R_y = get_matrix_y(pitch)
     R_x = get_matrix_x(roll)
-    R = R_z @ R_y @ R_x
-    return R
+    axis_rotation = {"z": R_z, "y": R_y, "x": R_x}
+    matrix = axis_rotation[axes[0]] @ axis_rotation[axes[1]] @ axis_rotation[axes[2]]
+    return matrix
 
 
 # 轴角转旋转矩阵
