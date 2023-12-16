@@ -58,10 +58,11 @@ def check_matrix(matrix: torch.Tensor):
     Raises: ValueError if the matrix is not a valid rotation matrix
 
     """
-    if not torch.allclose(torch.eye(3), matrix @ matrix.transpose(-1, -2), rtol=0, atol=1e-6):
+    device = matrix.device
+    if not torch.allclose(torch.eye(3).to(device), matrix @ matrix.transpose(-1, -2), rtol=0, atol=1e-6):
         raise ValueError("The matrix is not a valid rotation matrix")
     # 检查是否是右手坐标系
-    if not torch.allclose(torch.det(matrix), torch.ones(1), rtol=0, atol=1e-6):
+    if not torch.allclose(torch.det(matrix), torch.ones(1).to(device), rtol=0, atol=1e-6):
         raise ValueError("The matrix is in a right hand coordinate system")
 
 
