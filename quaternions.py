@@ -73,17 +73,7 @@ def weighted_average_quaternions(quaternions: torch.Tensor, weights: Union[torch
     
     mat_a = torch.transpose(quaternions, -1, -2) @ (quaternions * weights)  # (*,4,4)
     mat_a = (1.0 / weight_sum) * mat_a
-    try:
-        eigen_values, eigen_vectors = torch.linalg.eig(mat_a)  # (*,4), # (*,4,4)
-    except RuntimeError:
-        print("mat_a: ", mat_a)
-        print("weights: ", weights)
-        print("quaternions: ", quaternions)
-        # 保存数据
-        np.savetxt("./weights.txt", weights.detach().cpu().numpy())
-        np.savetxt("./quaternions.txt", quaternions.detach().cpu().numpy())
-        raise RuntimeError("mat_a is not invertible, quaternions is nan")
-
+    eigen_values, eigen_vectors = torch.linalg.eig(mat_a)  # (*,4), # (*,4,4)
     eigen_values = torch.real(eigen_values)
     index = torch.argmax(eigen_values, dim=-1)
 
