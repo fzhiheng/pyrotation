@@ -149,7 +149,7 @@ def quaternion_from_euler_angle(euler: np.ndarray) -> np.ndarray:
     Returns: wxyz
 
     """
-    euler /= 2
+    euler = euler/2
     yaw, pitch, roll = euler[..., 0], euler[..., 1], euler[..., 2]  # (*,)
     w = np.sin(yaw) * np.sin(pitch) * np.sin(roll) + np.cos(yaw) * np.cos(pitch) * np.cos(roll)  # (*,)
     x = np.sin(yaw) * np.cos(pitch) * np.cos(roll) - np.cos(yaw) * np.sin(pitch) * np.sin(roll)  # (*,)
@@ -169,7 +169,7 @@ def quaternion_from_euler_angle(euler: torch.Tensor) -> torch.Tensor:
     Returns: wxyz
 
     """
-    euler /= 2
+    euler = euler / 2
     yaw, pitch, roll = euler[..., 0], euler[..., 1], euler[..., 2]
     w = torch.sin(yaw) * torch.sin(pitch) * torch.sin(roll) + torch.cos(yaw) * torch.cos(pitch) * torch.cos(roll)
     x = torch.sin(yaw) * torch.cos(pitch) * torch.cos(roll) - torch.cos(yaw) * torch.sin(pitch) * torch.sin(roll)
@@ -688,7 +688,6 @@ def fill_matrix(matrix: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     return full_matrix
 
 
-
 def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
     """_summary_
 
@@ -702,7 +701,6 @@ def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray,
     matrix = matrix_from_quaternion(q)  # (*,3,3)
     full_matrix = fill_matrix(matrix, t)
     return full_matrix
-
 
 
 if __name__ == "__main__":
