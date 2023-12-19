@@ -149,12 +149,12 @@ def quaternion_from_euler_angle(euler: np.ndarray) -> np.ndarray:
     Returns: wxyz
 
     """
-    euler = euler/2
+    euler = euler / 2
     yaw, pitch, roll = euler[..., 0], euler[..., 1], euler[..., 2]  # (*,)
     w = np.sin(yaw) * np.sin(pitch) * np.sin(roll) + np.cos(yaw) * np.cos(pitch) * np.cos(roll)  # (*,)
-    x = np.sin(yaw) * np.cos(pitch) * np.cos(roll) - np.cos(yaw) * np.sin(pitch) * np.sin(roll)  # (*,)
-    y = np.cos(yaw) * np.sin(pitch) * np.cos(roll) + np.sin(yaw) * np.cos(pitch) * np.sin(roll)  # (*,)
-    z = np.cos(yaw) * np.cos(pitch) * np.sin(roll) - np.sin(yaw) * np.sin(pitch) * np.cos(roll)  # (*,)
+    x = -np.sin(yaw) * np.sin(pitch) * np.cos(roll) + np.cos(yaw) * np.cos(pitch) * np.sin(roll)  # (*,)
+    y = np.sin(yaw) * np.cos(pitch) * np.sin(roll) + np.cos(yaw) * np.sin(pitch) * np.cos(roll)  # (*,)
+    z = -np.cos(yaw) * np.sin(pitch) * np.sin(roll) + np.sin(yaw) * np.cos(pitch) * np.cos(roll)
     return np.stack([w, x, y, z], axis=-1)  # (*,4)
 
 
@@ -172,9 +172,9 @@ def quaternion_from_euler_angle(euler: torch.Tensor) -> torch.Tensor:
     euler = euler / 2
     yaw, pitch, roll = euler[..., 0], euler[..., 1], euler[..., 2]
     w = torch.sin(yaw) * torch.sin(pitch) * torch.sin(roll) + torch.cos(yaw) * torch.cos(pitch) * torch.cos(roll)
-    x = torch.sin(yaw) * torch.cos(pitch) * torch.cos(roll) - torch.cos(yaw) * torch.sin(pitch) * torch.sin(roll)
-    y = torch.cos(yaw) * torch.sin(pitch) * torch.cos(roll) + torch.sin(yaw) * torch.cos(pitch) * torch.sin(roll)
-    z = torch.cos(yaw) * torch.cos(pitch) * torch.sin(roll) - torch.sin(yaw) * torch.sin(pitch) * torch.cos(roll)
+    x = -torch.sin(yaw) * torch.sin(pitch) * torch.cos(roll) + torch.cos(yaw) * torch.cos(pitch) * torch.sin(roll)
+    y = torch.sin(yaw) * torch.cos(pitch) * torch.sin(roll) + torch.cos(yaw) * torch.sin(pitch) * torch.cos(roll)
+    z = -torch.cos(yaw) * torch.sin(pitch) * torch.sin(roll) + torch.sin(yaw) * torch.cos(pitch) * torch.cos(roll)
     return torch.stack([w, x, y, z], dim=-1)
 
 
@@ -705,7 +705,7 @@ def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray,
 
 if __name__ == "__main__":
     shape = (1, 1, 3)
-    axis_angle = np.ones(shape)
+    axis_angle = np.random.random(shape)
 
     matrix = matrix_from_axis_angle(axis_angle)
     quat = quaternion_from_axis_angle(axis_angle)
