@@ -94,7 +94,7 @@ def quaternion_from_matrix(matrix: torch.Tensor) -> torch.Tensor:
     Args:
         matrix: (*,3,3)
 
-    Returns: (*,4)
+    Returns: (*,4) wxyz
 
     """
     check_matrix(matrix)
