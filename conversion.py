@@ -3,8 +3,9 @@ from typing import Union
 
 import torch
 import numpy as np
-
 from plum import dispatch
+
+from core import skew_symmetric
 
 # File    ：quaternions.py
 # Author  ：fzhiheng
@@ -399,11 +400,7 @@ def matrix_from_axis_angle(axis_angle: np.ndarray) -> np.ndarray:
     axis = axis_angle / angle  # (*,3)
     # 使用罗德里格旋转公式
     # https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-    axis_skew1 = np.stack([np.zeros_like(axis[..., 0]), -axis[..., 2], axis[..., 1]], axis=-1)  # (*,3)
-    axis_skew2 = np.stack([axis[..., 2], np.zeros_like(axis[..., 0]), -axis[..., 0]], axis=-1)  # (*,3)
-    axis_skew3 = np.stack([-axis[..., 1], axis[..., 0], np.zeros_like(axis[..., 0])], axis=-1)  # (*,3)
-    axis_skew = np.stack([axis_skew1, axis_skew2, axis_skew3], axis=-2)  # (*,3,3)
-
+    axis_skew = skew_symmetric(axis)  # (*,3,3)
     angle_cos = np.cos(angle)[..., None]  # (*,1,1)
     angle_sin = np.sin(angle)[..., None]  # (*,1,1)
 
@@ -427,11 +424,7 @@ def matrix_from_axis_angle(axis_angle: torch.Tensor) -> torch.Tensor:
     axis = axis_angle / angle
     # 使用罗德里格旋转公式
     # https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-    axis_skew1 = torch.stack([torch.zeros_like(axis[..., 0]).to(device), -axis[..., 2], axis[..., 1]], dim=-1)
-    axis_skew2 = torch.stack([axis[..., 2], torch.zeros_like(axis[..., 0]).to(device), -axis[..., 0]], dim=-1)
-    axis_skew3 = torch.stack([-axis[..., 1], axis[..., 0], torch.zeros_like(axis[..., 0]).to(device)], dim=-1)
-    axis_skew = torch.stack([axis_skew1, axis_skew2, axis_skew3], dim=-2)
-
+    axis_skew = skew_symmetric(axis)
     angle_cos = torch.cos(angle)[..., None]
     angle_sin = torch.sin(angle)[..., None]
 
@@ -701,6 +694,81 @@ def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray,
     matrix = matrix_from_quaternion(q)  # (*,3,3)
     full_matrix = fill_matrix(matrix, t)
     return full_matrix
+
+
+def SO3_from_so3(so3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    """_summary_
+
+    Args:
+        so3 (Union[np.ndarray, torch.Tensor]): (*,3)
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,3,3)
+    """
+    return matrix_from_axis_angle(so3)
+
+
+def so3_from_SO3(SO3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    """_summary_
+
+    Args:
+        SO3 (Union[np.ndarray, torch.Tensor]): (*,3,3)
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,3)
+    """
+    return axis_angle_from_matrix(SO3)
+
+
+@dispatch
+def SE3_from_se3(se3: torch.Tensor) -> torch.Tensor:
+    """_summary_
+
+    Args:
+        se3 (Union[np.ndarray, torch.Tensor]): (*,6) (phi, rho) phi: rotation, rho: translation
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,4,4)
+    """
+    phi = se3[..., :3]  # (*,3)
+    rho = se3[..., 3:]  # (*,3)
+    device = se3.device
+    angle = torch.linalg.norm(phi, dim=-1, keepdim=True)
+    phi = phi / angle
+    skew = skew_symmetric(phi)
+    angle_cos = torch.cos(angle)[..., None]
+    angle_sin = torch.sin(angle)[..., None]
+    R = angle_cos * torch.eye(3).to(device) + angle_sin * skew + (1 - angle_cos) * phi[..., None] @ phi[..., None, :]
+    jacobi = angle_sin / angle * torch.eye(3).to(device) + (1 - angle_sin / angle) * phi[..., None] @ phi[..., None, :] + (
+            1 - angle_cos) / angle * skew  # (*,3,3)
+    t = jacobi @ rho[..., None]  # (*,3,1)
+    SE3 = fill_matrix(R, t[..., 0])  # (*,4,4)
+    return SE3
+
+
+@dispatch
+def SE3_from_se3(se3: np.ndarray) -> np.ndarray:
+    """_summary_
+
+    Args:
+        se3 (Union[np.ndarray, torch.Tensor]): (*,6) (phi, rho) phi: rotation, rho: translation
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,4,4)
+    """
+    phi = se3[..., :3]  # (*,3)
+    rho = se3[..., 3:]  # (*,3)
+    angle = np.linalg.norm(phi, axis=-1, keepdims=True)
+    phi = phi / angle
+    skew = skew_symmetric(phi)
+    angle_cos = np.cos(angle)[..., None]
+    angle_sin = np.sin(angle)[..., None]
+    R = angle_cos * np.eye(3) + angle_sin * skew + (1 - angle_cos) * phi[..., None] @ phi[..., None, :]
+    jacobi = angle_sin / angle * np.eye(3) + (1 - angle_sin / angle) * phi[..., None] @ phi[..., None, :] + (
+            1 - angle_cos) / angle * skew  # (*,3,3)
+    t = jacobi @ rho[..., None]
+    SE3 = fill_matrix(R, t[..., 0])
+    return SE3
 
 
 if __name__ == "__main__":
