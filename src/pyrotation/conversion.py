@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from plum import dispatch
 
-from .core import skew_symmetric
+from .core import skew_symmetric, is_less_then_epsilon_4th_root, get_matrix_y, get_matrix_x, get_matrix_z
 
 # File    ：quaternions.py
 # Author  ：fzhiheng
@@ -60,10 +60,10 @@ def check_matrix(matrix: torch.Tensor):
 
     """
     device = matrix.device
-    if not torch.allclose(torch.eye(3).to(device), matrix @ matrix.transpose(-1, -2), rtol=0, atol=1e-6):
+    if not torch.allclose(torch.eye(3, dtype=matrix.dtype).to(device), matrix @ matrix.transpose(-1, -2), rtol=0, atol=1e-6):
         raise ValueError("The matrix is not a valid rotation matrix")
     # 检查是否是右手坐标系
-    if not torch.allclose(torch.det(matrix), torch.ones(1).to(device), rtol=0, atol=1e-6):
+    if not torch.allclose(torch.det(matrix), torch.ones(1, dtype=matrix.dtype).to(device), rtol=0, atol=1e-6):
         raise ValueError("The matrix is in a right hand coordinate system")
 
 
@@ -229,142 +229,6 @@ def matrix_from_quaternion(quaternion: torch.Tensor) -> torch.Tensor:
     return rot_matx
 
 
-# 欧拉角转旋转矩阵
-@dispatch
-def get_matrix_z(yaw: np.ndarray) -> np.ndarray:
-    """ roation matrix around z-axis
-
-    Args:
-        yaw (np.ndarray): (*,)
-
-    Returns:
-        np.ndarray: (*,3,3)
-    """
-    Rz = np.stack(
-        [
-            np.stack([np.cos(yaw), -np.sin(yaw), np.zeros_like(yaw)], axis=-1),
-            np.stack([np.sin(yaw), np.cos(yaw), np.zeros_like(yaw)], axis=-1),
-            np.stack([np.zeros_like(yaw), np.zeros_like(yaw), np.ones_like(yaw)], axis=-1),
-        ],
-        axis=-2,
-    )
-
-    return Rz
-
-
-@dispatch
-def get_matrix_y(pitch: np.ndarray) -> np.ndarray:
-    """ roation matrix around y-axis
-
-    Args:
-        pitch (np.ndarray): (*,)
-
-    Returns:
-        np.ndarray: (*,3,3)
-    """
-    Ry = np.stack(
-        [
-            np.stack([np.cos(pitch), np.zeros_like(pitch), np.sin(pitch)], axis=-1),
-            np.stack([np.zeros_like(pitch), np.ones_like(pitch), np.zeros_like(pitch)], axis=-1),
-            np.stack([-np.sin(pitch), np.zeros_like(pitch), np.cos(pitch)], axis=-1),
-        ],
-        axis=-2,
-    )
-
-    return Ry
-
-
-@dispatch
-def get_matrix_x(roll: np.ndarray) -> np.ndarray:
-    """ roation matrix around x-axis
-
-    Args:
-        roll (np.ndarray): (*,)
-    Returns:
-        np.ndarray: (*,3,3)
-    """
-
-    Rx = np.stack(
-        [
-            np.stack([np.ones_like(roll), np.zeros_like(roll), np.zeros_like(roll)], axis=-1),
-            np.stack([np.zeros_like(roll), np.cos(roll), -np.sin(roll)], axis=-1),
-            np.stack([np.zeros_like(roll), np.sin(roll), np.cos(roll)], axis=-1),
-        ],
-        axis=-2,
-    )
-    return Rx
-
-
-@dispatch
-def get_matrix_z(yaw: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around z-axis
-
-    Args:
-        yaw (torch.Tensor): (*,)
-    Returns:
-        torch.Tensor: (*,3,3)
-    """
-    device = yaw.device
-    Rz = torch.stack(
-        [
-            torch.stack([torch.cos(yaw), -torch.sin(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
-            torch.stack([torch.sin(yaw), torch.cos(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
-            torch.stack([torch.zeros_like(yaw).to(device),
-                         torch.zeros_like(yaw).to(device),
-                         torch.ones_like(yaw).to(device)], dim=-1),
-        ],
-        dim=-2,
-    )
-    return Rz
-
-
-@dispatch
-def get_matrix_y(pitch: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around y-axis
-
-    Args:
-        pitch (torch.Tensor): (*,)
-    Returns:
-        torch.Tensor: (*,3,3)
-    """
-    device = pitch.device
-    Ry = torch.stack(
-        [
-            torch.stack([torch.cos(pitch), torch.zeros_like(pitch).to(device), torch.sin(pitch)], dim=-1),
-            torch.stack([torch.zeros_like(pitch).to(device),
-                         torch.ones_like(pitch).to(device),
-                         torch.zeros_like(pitch).to(device)], dim=-1),
-            torch.stack(
-                [-torch.sin(pitch), torch.zeros_like(pitch).to(device), torch.cos(pitch)], dim=-1),
-        ],
-        dim=-2,
-    )
-    return Ry
-
-
-@dispatch
-def get_matrix_x(roll: torch.Tensor) -> torch.Tensor:
-    """ roation matrix around x-axis
-
-    Args:
-        roll (torch.Tensor): (*,)
-    Returns:
-        torch.Tensor: (*,3,3)
-    """
-    device = roll.device
-    Rx = torch.stack(
-        [
-            torch.stack([torch.ones_like(roll).to(device),
-                         torch.zeros_like(roll).to(device),
-                         torch.zeros_like(roll).to(device)], dim=-1),
-            torch.stack([torch.zeros_like(roll).to(device), torch.cos(roll), -torch.sin(roll)], dim=-1),
-            torch.stack([torch.zeros_like(roll).to(device), torch.sin(roll), torch.cos(roll)], dim=-1),
-        ],
-        dim=-2,
-    )
-    return Rx
-
-
 def matrix_from_euler_angle(euler_angle: Union[torch.Tensor, np.ndarray], axes=("z", "y", "x")) -> Union[torch.Tensor, np.ndarray]:
     """ get rotation matrix from euler angle,default order is yaw, pitch, roll
 
@@ -398,7 +262,6 @@ def matrix_from_axis_angle(axis_angle: np.ndarray) -> np.ndarray:
     """
     angle = np.linalg.norm(axis_angle, axis=-1, keepdims=True)  # (*,1)
     axis = axis_angle / angle  # (*,3)
-    # 使用罗德里格旋转公式
     # https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
     axis_skew = skew_symmetric(axis)  # (*,3,3)
     angle_cos = np.cos(angle)[..., None]  # (*,1,1)
@@ -696,7 +559,7 @@ def full_matrix_from_qt(q: Union[np.ndarray, torch.Tensor], t: Union[np.ndarray,
     return full_matrix
 
 
-def SO3_from_so3(so3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+def SO3_from_so3(phi: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
     """_summary_
 
     Args:
@@ -705,7 +568,7 @@ def SO3_from_so3(so3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torc
     Returns:
         Union[np.ndarray, torch.Tensor]: (*,3,3)
     """
-    return matrix_from_axis_angle(so3)
+    return matrix_from_axis_angle(phi)
 
 
 def so3_from_SO3(SO3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
@@ -718,6 +581,34 @@ def so3_from_SO3(SO3: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torc
         Union[np.ndarray, torch.Tensor]: (*,3)
     """
     return axis_angle_from_matrix(SO3)
+
+
+@dispatch
+def SE3_from_se3(se3: np.ndarray) -> np.ndarray:
+    """_summary_
+
+    Args:
+        se3 (Union[np.ndarray, torch.Tensor]): (*,6) (phi, rho) phi: rotation, rho: translation
+
+    Returns:
+        Union[np.ndarray, torch.Tensor]: (*,4,4)
+    """
+    phi = se3[..., :3]  # (*,3)
+    rho = se3[..., 3:]  # (*,3)
+    angle = np.linalg.norm(phi, axis=-1, keepdims=True)
+    a = phi / angle
+    skew = skew_symmetric(a)
+    angle_cos = np.cos(angle)
+    angle_sin = np.sin(angle)
+    R = angle_cos[..., None] * np.eye(3) + angle_sin[..., None] * skew + (1 - angle_cos[..., None]) * a[..., None] @ a[..., None, :]
+    tmp1 = np.where(is_less_then_epsilon_4th_root(np.abs(angle)), 1.0 - angle * angle * (1.0 / 6.0), angle_sin / angle)
+    tmp2 = np.where(is_less_then_epsilon_4th_root(np.abs(angle)), angle * (1.0 / 2.0) - angle * angle * angle * (1.0 / 24.0), (1 - angle_cos) / angle)
+    tmp1 = tmp1[..., None]
+    tmp2 = tmp2[..., None]
+    jacobi = tmp1 * np.eye(3) + (1 - tmp1) * a[..., None] @ a[..., None, :] + tmp2 * skew  # (*,3,3)
+    t = jacobi @ rho[..., None]
+    SE3 = fill_matrix(R, t[..., 0])
+    return SE3
 
 
 @dispatch
@@ -734,80 +625,74 @@ def SE3_from_se3(se3: torch.Tensor) -> torch.Tensor:
     rho = se3[..., 3:]  # (*,3)
     device = se3.device
     angle = torch.linalg.norm(phi, dim=-1, keepdim=True)
-    phi = phi / angle
-    skew = skew_symmetric(phi)
-    angle_cos = torch.cos(angle)[..., None]
-    angle_sin = torch.sin(angle)[..., None]
-    R = angle_cos * torch.eye(3).to(device) + angle_sin * skew + (1 - angle_cos) * phi[..., None] @ phi[..., None, :]
-    jacobi = angle_sin / angle * torch.eye(3).to(device) + (1 - angle_sin / angle) * phi[..., None] @ phi[..., None, :] + (
-            1 - angle_cos) / angle * skew  # (*,3,3)
-    t = jacobi @ rho[..., None]  # (*,3,1)
-    SE3 = fill_matrix(R, t[..., 0])  # (*,4,4)
-    return SE3
-
-
-@dispatch
-def SE3_from_se3(se3: np.ndarray) -> np.ndarray:
-    """_summary_
-
-    Args:
-        se3 (Union[np.ndarray, torch.Tensor]): (*,6) (phi, rho) phi: rotation, rho: translation
-
-    Returns:
-        Union[np.ndarray, torch.Tensor]: (*,4,4)
-    """
-    phi = se3[..., :3]  # (*,3)
-    rho = se3[..., 3:]  # (*,3)
-    angle = np.linalg.norm(phi, axis=-1, keepdims=True)
-    phi = phi / angle
-    skew = skew_symmetric(phi)
-    angle_cos = np.cos(angle)[..., None]
-    angle_sin = np.sin(angle)[..., None]
-    R = angle_cos * np.eye(3) + angle_sin * skew + (1 - angle_cos) * phi[..., None] @ phi[..., None, :]
-    jacobi = angle_sin / angle * np.eye(3) + (1 - angle_sin / angle) * phi[..., None] @ phi[..., None, :] + (
-            1 - angle_cos) / angle * skew  # (*,3,3)
+    a = phi / angle
+    skew = skew_symmetric(a)
+    angle_cos = torch.cos(angle)
+    angle_sin = torch.sin(angle)
+    R = angle_cos[..., None] * torch.eye(3).to(device) + angle_sin[..., None] * skew + (1 - angle_cos[..., None]) * a[..., None] @ a[..., None, :]
+    tmp1 = torch.where(is_less_then_epsilon_4th_root(torch.abs(angle)), 1.0 - angle * angle * (1.0 / 6.0), angle_sin / angle)
+    tmp2 = torch.where(is_less_then_epsilon_4th_root(torch.abs(angle)), angle * (1.0 / 2.0) - angle * angle * angle * (1.0 / 24.0),
+                       (1 - angle_cos) / angle)
+    tmp1 = tmp1[..., None]
+    tmp2 = tmp2[..., None]
+    jacobi = tmp1 * torch.eye(3).to(device) + (1 - tmp1) * a[..., None] @ a[..., None, :] + tmp2 * skew  # (*,3,3)
     t = jacobi @ rho[..., None]
     SE3 = fill_matrix(R, t[..., 0])
     return SE3
 
 
-if __name__ == "__main__":
-    shape = (1, 1, 3)
-    axis_angle = np.random.random(shape)
+@dispatch
+def se3_from_SE3(SE3: np.ndarray) -> np.ndarray:
+    """
 
-    matrix = matrix_from_axis_angle(axis_angle)
-    quat = quaternion_from_axis_angle(axis_angle)
-    euler = euler_angle_from_matrix(matrix)
+    Args:
+        SE3: (*,4,4)
 
-    # check all functions
-    assert np.allclose(axis_angle, axis_angle_from_quaternion(quat))
-    assert np.allclose(axis_angle, axis_angle_from_matrix(matrix))
-    assert np.allclose(axis_angle, axis_angle_from_euler(euler))
+    Returns:
 
-    assert np.allclose(matrix, matrix_from_quaternion(quat))
-    assert np.allclose(matrix, matrix_from_euler_angle(euler))
+    """
+    R = SE3[..., :3, :3]
+    t = SE3[..., :3, 3:4]
+    phi = so3_from_SO3(R)  # (*,3)
+    angle = np.linalg.norm(phi, axis=-1, keepdims=True)
+    skew = skew_symmetric(phi)  # (*,3,3)
+    angle_cos = np.cos(angle)
+    angle_sin = np.sin(angle)
+    tmp1 = np.where(is_less_then_epsilon_4th_root(np.abs(angle)), 1.0 - angle * angle * (1.0 / 6.0), angle_sin / angle)
+    tmp2 = np.where(is_less_then_epsilon_4th_root(np.abs(angle)), 0.5 - angle * angle * (1.0 / 24.0), (1 - angle_cos) / angle ** 2)
+    tmp = (1 - tmp1 / (2 * tmp2)) / (angle ** 2)
 
-    assert np.allclose(euler, euler_angle_from_quaternion(quat))
-    assert np.allclose(euler, euler_angle_from_axis_angle(axis_angle))
+    jacobi_inv = np.ones_like(tmp[..., None]) * np.eye(3) - 0.5 * skew + tmp[..., None] * skew @ skew  # (*,3,3)
+    rho = (jacobi_inv @ t)[..., 0]
 
-    assert np.allclose(quat, quaternion_from_matrix(matrix))
-    assert np.allclose(quat, quaternion_from_euler_angle(euler))
+    se3 = np.concatenate([phi, rho], -1)
+    return se3
 
-    axis_angle = torch.ones(shape)
-    matrix = matrix_from_axis_angle(axis_angle)
-    quat = quaternion_from_axis_angle(axis_angle)
-    euler = euler_angle_from_matrix(matrix)
 
-    # check all functions
-    assert torch.allclose(axis_angle, axis_angle_from_quaternion(quat))
-    assert torch.allclose(axis_angle, axis_angle_from_matrix(matrix))
-    assert torch.allclose(axis_angle, axis_angle_from_euler(euler))
+@dispatch
+def se3_from_SE3(SE3: torch.Tensor) -> torch.Tensor:
+    """
 
-    assert torch.allclose(matrix, matrix_from_quaternion(quat))
-    assert torch.allclose(matrix, matrix_from_euler_angle(euler))
+    Args:
+        SE3: (*,4,4)
 
-    assert torch.allclose(euler, euler_angle_from_quaternion(quat))
-    assert torch.allclose(euler, euler_angle_from_axis_angle(axis_angle))
+    Returns:
 
-    assert torch.allclose(quat, quaternion_from_matrix(matrix))
-    assert torch.allclose(quat, quaternion_from_euler_angle(euler))
+    """
+    R = SE3[..., :3, :3]
+    t = SE3[..., :3, 3:4]
+    device = SE3.device
+    phi = so3_from_SO3(R)  # (*,3)
+    angle = torch.linalg.norm(phi, axis=-1, keepdims=True)
+    skew = skew_symmetric(phi)  # (*,3,3)
+    angle_cos = torch.cos(angle)
+    angle_sin = torch.sin(angle)
+    tmp1 = torch.where(is_less_then_epsilon_4th_root(np.abs(angle)), 1.0 - angle * angle * (1.0 / 6.0), angle_sin / angle)
+    tmp2 = torch.where(is_less_then_epsilon_4th_root(np.abs(angle)), 0.5 - angle * angle * (1.0 / 24.0), (1 - angle_cos) / angle ** 2)
+    tmp = (1 - tmp1 / (2 * tmp2)) / (angle ** 2)
+
+    jacobi_inv = torch.ones_like(tmp[..., None]).to(device) * torch.eye(3, dtype=SE3.dtype).to(device) - 0.5 * skew + tmp[..., None] * skew @ skew
+    rho = (jacobi_inv @ t)[..., 0]
+
+    se3 = torch.cat([phi, rho], -1)
+    return se3

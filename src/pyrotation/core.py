@@ -46,6 +46,140 @@ def skew_symmetric(vector: torch.Tensor):
     skew = torch.stack([skew1, skew2, skew3], dim=-2)
     return skew
 
+@dispatch
+def get_matrix_z(yaw: np.ndarray) -> np.ndarray:
+    """ roation matrix around z-axis
+
+    Args:
+        yaw (np.ndarray): (*,)
+
+    Returns:
+        np.ndarray: (*,3,3)
+    """
+    Rz = np.stack(
+        [
+            np.stack([np.cos(yaw), -np.sin(yaw), np.zeros_like(yaw)], axis=-1),
+            np.stack([np.sin(yaw), np.cos(yaw), np.zeros_like(yaw)], axis=-1),
+            np.stack([np.zeros_like(yaw), np.zeros_like(yaw), np.ones_like(yaw)], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    return Rz
+
+
+@dispatch
+def get_matrix_y(pitch: np.ndarray) -> np.ndarray:
+    """ roation matrix around y-axis
+
+    Args:
+        pitch (np.ndarray): (*,)
+
+    Returns:
+        np.ndarray: (*,3,3)
+    """
+    Ry = np.stack(
+        [
+            np.stack([np.cos(pitch), np.zeros_like(pitch), np.sin(pitch)], axis=-1),
+            np.stack([np.zeros_like(pitch), np.ones_like(pitch), np.zeros_like(pitch)], axis=-1),
+            np.stack([-np.sin(pitch), np.zeros_like(pitch), np.cos(pitch)], axis=-1),
+        ],
+        axis=-2,
+    )
+
+    return Ry
+
+
+@dispatch
+def get_matrix_x(roll: np.ndarray) -> np.ndarray:
+    """ roation matrix around x-axis
+
+    Args:
+        roll (np.ndarray): (*,)
+    Returns:
+        np.ndarray: (*,3,3)
+    """
+
+    Rx = np.stack(
+        [
+            np.stack([np.ones_like(roll), np.zeros_like(roll), np.zeros_like(roll)], axis=-1),
+            np.stack([np.zeros_like(roll), np.cos(roll), -np.sin(roll)], axis=-1),
+            np.stack([np.zeros_like(roll), np.sin(roll), np.cos(roll)], axis=-1),
+        ],
+        axis=-2,
+    )
+    return Rx
+
+
+@dispatch
+def get_matrix_z(yaw: torch.Tensor) -> torch.Tensor:
+    """ roation matrix around z-axis
+
+    Args:
+        yaw (torch.Tensor): (*,)
+    Returns:
+        torch.Tensor: (*,3,3)
+    """
+    device = yaw.device
+    Rz = torch.stack(
+        [
+            torch.stack([torch.cos(yaw), -torch.sin(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
+            torch.stack([torch.sin(yaw), torch.cos(yaw), torch.zeros_like(yaw).to(device)], dim=-1),
+            torch.stack([torch.zeros_like(yaw).to(device),
+                         torch.zeros_like(yaw).to(device),
+                         torch.ones_like(yaw).to(device)], dim=-1),
+        ],
+        dim=-2,
+    )
+    return Rz
+
+
+@dispatch
+def get_matrix_y(pitch: torch.Tensor) -> torch.Tensor:
+    """ roation matrix around y-axis
+
+    Args:
+        pitch (torch.Tensor): (*,)
+    Returns:
+        torch.Tensor: (*,3,3)
+    """
+    device = pitch.device
+    Ry = torch.stack(
+        [
+            torch.stack([torch.cos(pitch), torch.zeros_like(pitch).to(device), torch.sin(pitch)], dim=-1),
+            torch.stack([torch.zeros_like(pitch).to(device),
+                         torch.ones_like(pitch).to(device),
+                         torch.zeros_like(pitch).to(device)], dim=-1),
+            torch.stack(
+                [-torch.sin(pitch), torch.zeros_like(pitch).to(device), torch.cos(pitch)], dim=-1),
+        ],
+        dim=-2,
+    )
+    return Ry
+
+
+@dispatch
+def get_matrix_x(roll: torch.Tensor) -> torch.Tensor:
+    """ roation matrix around x-axis
+
+    Args:
+        roll (torch.Tensor): (*,)
+    Returns:
+        torch.Tensor: (*,3,3)
+    """
+    device = roll.device
+    Rx = torch.stack(
+        [
+            torch.stack([torch.ones_like(roll).to(device),
+                         torch.zeros_like(roll).to(device),
+                         torch.zeros_like(roll).to(device)], dim=-1),
+            torch.stack([torch.zeros_like(roll).to(device), torch.cos(roll), -torch.sin(roll)], dim=-1),
+            torch.stack([torch.zeros_like(roll).to(device), torch.sin(roll), torch.cos(roll)], dim=-1),
+        ],
+        dim=-2,
+    )
+    return Rx
+
 
 @dispatch
 def is_less_then_epsilon_4th_root(x: np.ndarray):
@@ -63,7 +197,7 @@ def is_less_then_epsilon_4th_root(x: torch.Tensor):
 
 
 @dispatch
-def arc_sin_x_over_x(x: np.ndarray):
+def arc_sin_x_over_x(x: np.ndarray) -> np.ndarray:
     """
 
     Args:
@@ -76,7 +210,7 @@ def arc_sin_x_over_x(x: np.ndarray):
 
 
 @dispatch
-def arc_sin_x_over_x(x: torch.Tensor):
+def arc_sin_x_over_x(x: torch.Tensor) -> torch.Tensor:
     """
 
     Args:
@@ -86,3 +220,13 @@ def arc_sin_x_over_x(x: torch.Tensor):
 
     """
     return torch.where(is_less_then_epsilon_4th_root(torch.abs(x)), 1.0 + x * x * (1.0 / 6.0), torch.asin(x) / x)
+
+
+@dispatch
+def sin_x_over_x(x: np.ndarray) -> np.ndarray:
+    return np.where(is_less_then_epsilon_4th_root(np.abs(x)), 1.0 - x * x * (1.0 / 6.0), np.sin(x) / x)
+
+
+@dispatch
+def sin_x_over_x(x: torch.Tensor) -> torch.Tensor:
+    return torch.where(is_less_then_epsilon_4th_root(torch.abs(x)), 1.0 - x * x * (1.0 / 6.0), torch.sin(x) / x)
