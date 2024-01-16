@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from plum import dispatch
 
-from core import skew_symmetric
+from .core import skew_symmetric
 
 # File    ：quaternions.py
 # Author  ：fzhiheng

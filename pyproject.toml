@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "pyrotation"
+version = "0.0.1"
+authors = [
+    { name = "fzhiheng", email = "fzhazr@sjtu.edu.cn" },
+]
+maintainers = [
+    { name = "fzhiheng", email = "fzhazr@sjtu.edu.cn" },
+]
+description = "A package to handle rotation in 3D space with pytorch and numpy"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "torch",
+    "plum-dispatch",
+]
+keywords = ["rotation", "pytorch", "numpy", "quaternion", "euler", "axis-angle"]
+
+[project.urls]
+Homepage = "https://github.com/fzhiheng/pyrotation.git"
